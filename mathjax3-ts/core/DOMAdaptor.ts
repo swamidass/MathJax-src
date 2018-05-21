@@ -88,6 +88,18 @@ export interface DOMAdaptor<N, T, D> {
     root(doc: D): N;
 
     /*
+     * @param{D} doc    The document whose statusline is to be obtained
+     * @return{string}  The document's status line (title)
+     */
+    getStatus(doc: D): string;
+
+    /*
+     * @param{D} doc           The document whose statusline is to be set
+     * @param{string} status   The document's new status line (title)
+     */
+    setStatus(doc: D, status: string): void;
+
+    /*
      * @param{N} node        The node to search for tags
      * @param{string} name   The name of the tag to search for
      * @param{string} ns     The namespace to search in (or null for no namespace)
@@ -293,6 +305,18 @@ export interface DOMAdaptor<N, T, D> {
      * @return{string}       The cssText for the styles
      */
     allStyles(node: N): string;
+
+    /*
+     * @param{N} node        The HTML node whose font size is to be determined
+     * @return{number}       The font size (in pixels) of the node
+     */
+    fontSize(node: N): number;
+
+    /*
+     * @param{N} node        The HTML node whose dimensions are to be determined
+     * @return{number}       The width and height (in pixels) of the element
+     */
+    nodeSize(node: N): [number, number];
 }
 
 /*****************************************************************/
@@ -384,6 +408,16 @@ export abstract class AbstractDOMAdaptor<N, T, D> implements DOMAdaptor<N, T, D>
      * @override
      */
     public abstract root(doc: D): N;
+
+    /*
+     * @override
+     */
+    public abstract getStatus(doc: D): string;
+
+    /*
+     * @override
+     */
+    public abstract setStatus(doc: D, status: string): void;
 
     /*
      * @override
@@ -554,5 +588,15 @@ export abstract class AbstractDOMAdaptor<N, T, D> implements DOMAdaptor<N, T, D>
      * @override
      */
     public abstract allStyles(node: N): string;
+
+    /*
+     * @override
+     */
+    public abstract fontSize(node: N): number;
+
+    /*
+     * @override
+     */
+    public abstract nodeSize(node: N): [number, number];
 
 }

@@ -24,6 +24,7 @@
 import {AbstractWrapper} from '../../core/Tree/Wrapper.js';
 import {Node, PropertyList} from '../../core/Tree/Node.js';
 import {MmlNode, TextNode, AbstractMmlNode, AttributeList} from '../../core/MmlTree/MmlNode.js';
+import {MmlMo} from '../../core/MmlTree/MmlNodes/mo.js';
 import {Property} from '../../core/Tree/Node.js';
 import {OptionList} from '../../util/Options.js';
 import {unicodeChars} from '../../util/string.js';
@@ -61,9 +62,11 @@ export const FONTSIZE: StringMap = {
 };
 
 export const SPACE: StringMap = {
-    [LENGTHS.em(3/18)]: '1',
-    [LENGTHS.em(4/18)]: '2',
-    [LENGTHS.em(5/18)]: '3',
+    [LENGTHS.em(2/18)]: '1',
+    [LENGTHS.em(3/18)]: '2',
+    [LENGTHS.em(4/18)]: '3',
+    [LENGTHS.em(5/18)]: '4',
+    [LENGTHS.em(6/18)]: '5'
 };
 
 /*
@@ -71,6 +74,14 @@ export const SPACE: StringMap = {
  */
 interface CSSStyle extends CSSStyleDeclaration {
     [id: string]: string | Function | number | CSSRule;
+}
+
+/*
+ * MathML spacing rules
+ */
+const SMALLSIZE = 2/18;
+function MathMLSpace(script: boolean, size: number) {
+    return (script ? size < SMALLSIZE ? 0 : SMALLSIZE : size);
 }
 
 /*****************************************************************/
@@ -97,9 +108,17 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
      *  The default styles for CommonHTML
      */
     public static styles: StyleList = {
-        'mjx-chtml [space="1"]': {'margin-left': '.167em'},
-        'mjx-chtml [space="2"]': {'margin-left': '.222em'},
-        'mjx-chtml [space="3"]': {'margin-left': '.278em'},
+        'mjx-chtml [space="1"]': {'margin-left': '.111em'},
+        'mjx-chtml [space="2"]': {'margin-left': '.167em'},
+        'mjx-chtml [space="3"]': {'margin-left': '.222em'},
+        'mjx-chtml [space="4"]': {'margin-left': '.278em'},
+        'mjx-chtml [space="5"]': {'margin-left': '.333em'},
+
+        'mjx-chtml [rspace="1"]': {'margin-right': '.111em'},
+        'mjx-chtml [rspace="2"]': {'margin-right': '.167em'},
+        'mjx-chtml [rspace="3"]': {'margin-right': '.222em'},
+        'mjx-chtml [rspace="4"]': {'margin-right': '.278em'},
+        'mjx-chtml [rspace="5"]': {'margin-right': '.333em'},
 
         'mjx-chtml [size="s"]' : {'font-size': '70.7%'},
         'mjx-chtml [size="ss"]': {'font-size': '50%'},
@@ -277,7 +296,11 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
         this.getScale();
         this.getSpace();
         this.childNodes = node.childNodes.map((child: Node) => {
-            return this.wrap(child as MmlNode);
+            const wrapped = this.wrap(child as MmlNode);
+            if (wrapped.bbox.pwidth) {
+                this.bbox.pwidth = '100%';
+            }
+            return wrapped;
         });
     }
 
@@ -487,14 +510,63 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
     }
 
     /*
-     * Sets the spacing based on TeX algorithm
+     * Sets the spacing based on TeX or MathML algorithm
      */
     protected getSpace() {
-        const space = this.node.texSpacing();
-        if (space) {
-            this.bbox.L = this.length2em(space);
+        const isTop = this.isTopEmbellished();
+        const hasSpacing = this.node.hasSpacingAttributes();
+        if (this.CHTML.options.mathmlSpacing || hasSpacing) {
+            isTop && this.getMathMLSpacing();
+        } else {
+            this.getTeXSpacing(isTop, hasSpacing);
         }
     }
+
+    /*
+     * Get the spacing using MathML rules based on the core MO
+     */
+    protected getMathMLSpacing() {
+        const node = this.node.coreMO() as MmlMo;
+        const attributes = node.attributes;
+        const parent = this.CHTML.nodeMap.get(node.coreParent());
+        const isScript = (attributes.get('scriptlevel') > 0);
+        this.bbox.L = (attributes.isSet('lspace') ?
+                       Math.max(0, this.length2em(attributes.get('lspace'))) :
+                       MathMLSpace(isScript, node.lspace));
+        this.bbox.R = (attributes.isSet('rspace') ?
+                       Math.max(0, this.length2em(attributes.get('rspace'))) :
+                       MathMLSpace(isScript, node.rspace));
+    }
+
+    /*
+     * Get the spacing using the TeX rules
+     *
+     * @parm{boolean} isTop       True when this is a top-level embellished operator
+     * @parm{boolean} hasSpacing  True when there is an explicit or inherited 'form' attribute
+     */
+    protected getTeXSpacing(isTop: boolean, hasSpacing: boolean) {
+        if (!hasSpacing) {
+            const space = this.node.texSpacing();
+            if (space) {
+                this.bbox.L = this.length2em(space);
+            }
+        }
+        if (isTop || hasSpacing) {
+            const attributes = this.node.coreMO().attributes;
+            if (attributes.isSet('lspace')) {
+                this.bbox.L = Math.max(0, this.length2em(attributes.get('lspace')));
+            }
+            if (attributes.isSet('rspace')) {
+                this.bbox.R = Math.max(0, this.length2em(attributes.get('rspace')));
+            }
+        }
+    }
+
+    protected isTopEmbellished() {
+        return (this.node.isEmbellished &&
+                !(this.node.Parent && this.node.Parent.isEmbellished));
+    }
+
     /*******************************************************************/
 
     /*
@@ -511,6 +583,7 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
         this.handleColor();
         this.handleSpace();
         this.handleAttributes();
+        this.handlePWidth();
         return chtml;
     }
 
@@ -574,16 +647,19 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
     }
 
     /*
-     * Add the proper spacing according to the TeX rules
-     *   FIXME:  still need to handle MathML spacing
+     * Add the proper spacing
      */
     protected handleSpace() {
-        if (this.bbox.L) {
-            const space = this.em(this.bbox.L);
-            if (SPACE[space]) {
-                this.adaptor.setAttribute(this.chtml, 'space', SPACE[space]);
-            } else {
-                this.adaptor.setStyle(this.chtml, 'marginLeft', space);
+        for (const data of [[this.bbox.L, 'space',  'marginLeft'],
+                            [this.bbox.R, 'rspace', 'marginRight']]) {
+            const [dimen, name, margin] = data as [number, string, string];
+            if (dimen) {
+                const space = this.em(dimen);
+                if (SPACE[space]) {
+                    this.adaptor.setAttribute(this.chtml, name, SPACE[space]);
+                } else {
+                    this.adaptor.setStyle(this.chtml, margin, space);
+                }
             }
         }
     }
@@ -619,12 +695,26 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
         const defaults = attributes.getAllDefaults();
         const skip = CHTMLWrapper.skipAttributes;
         for (const name of attributes.getExplicitNames()) {
-            if (skip[name] === false || (!(name in defaults) && !skip[name] && !this.adaptor.hasAttribute(this.chtml, name))) {
+            if (skip[name] === false || (!(name in defaults) && !skip[name] &&
+                                         !this.adaptor.hasAttribute(this.chtml, name))) {
                 this.adaptor.setAttribute(this.chtml, name, attributes.getExplicit(name) as string);
             }
         }
         if (attributes.get('class')) {
             this.adaptor.addClass(this.chtml, attributes.get('class') as string);
+        }
+    }
+
+    /*
+     * Handle the attributes needed for percentage widths
+     */
+    protected handlePWidth() {
+        if (this.bbox.pwidth) {
+            if (this.bbox.pwidth === '100%') {
+                this.adaptor.setAttribute(this.chtml, 'width', 'full');
+            } else {
+                this.adaptor.setStyle(this.chtml, 'width', this.bbox.pwidth);
+            }
         }
     }
 
@@ -674,6 +764,43 @@ export class CHTMLWrapper<N, T, D> extends AbstractWrapper<MmlNode, CHTMLWrapper
             }
         }
         return this.stretch.dir !== DIRECTION.None;
+    }
+
+    /*
+     * @return{[string, number]}  The alignment and indentation shift for the expression
+     */
+    protected getAlignShift() {
+        let {indentalign, indentshift, indentalignfirst, indentshiftfirst} =
+            this.node.attributes.getList('indentalign', 'indentshift',
+                                    'indentalignfirst', 'indentshiftfirst') as StringMap;
+        if (indentalignfirst !== 'indentalign') {
+            indentalign = indentalignfirst;
+        }
+        if (indentalign === 'auto') {
+            indentalign = 'center';
+        }
+        if (indentshiftfirst !== 'indentshift') {
+            indentshift = indentshiftfirst;
+        }
+        if (indentshift === 'auto') {
+            indentshift = '0';
+        }
+        const shift = this.length2em(indentshift, this.metrics.containerWidth);
+        return [indentalign, shift] as [string, number];
+    }
+
+    /*
+     * @param{N} chtml       The HTML node whose indenting is to be adjusted
+     * @param{string} align  The alignment for the node
+     * @param{number} shift  The indent (positive or negative) for the node
+     */
+    protected setIndent(chtml: N, align: string, shift: number) {
+        if (align === 'center' || align === 'left') {
+            this.adaptor.setStyle(chtml, 'margin-left', this.em(shift));
+        }
+        if (align === 'center' || align === 'right') {
+            this.adaptor.setStyle(chtml, 'margin-right', this.em(-shift));
+        }
     }
 
     /*******************************************************************/
