@@ -1025,7 +1025,52 @@ BaseMethods.HFill = function(parser: TexParser, name: string) {
   }
 };
 
-
+BaseMethods.CLine = function(parser: TexParser, name: string, style: string) {
+  let arg = parser.GetArgument(name);
+  const top = parser.stack.Top();
+  if (!(top instanceof sitem.ArrayItem) || top.Size()) {
+    throw new TexError(['Misplaced', 'Misplaced %1', name]);
+  }
+  let split = arg.split('-');
+  let start = parseInt(split[0], 10);
+  let end = parseInt(split[1], 10);
+  if (split.length !== 2 || isNaN(start) || isNaN(end) ||
+      start.toString() !== split[0] || end.toString() !== split[1]) {
+    throw new TexError(['WrongArgument', 'Incorrect argument %1 for %2.', arg, name]);
+  }
+  let columns = (top.arraydef['columnalign'] as string).split(/ /).length;
+  if (style == null) {
+    style = 'solid';
+  }
+  if (!top.table.length) {
+    // TODO: This needs to be done properly.
+    top.frame.push('top');
+  } else {
+    const lines = (top.arraydef['rowlines'] ? (top.arraydef['rowlines'] as string).split(/ /) : []);
+    while (lines.length < top.table.length) {
+      lines.push('none');
+    }
+    let cells: string[] = [];
+    let cell = lines[top.table.length - 1];
+    if (cell === 'none') {
+      cells = Array.apply(null, Array(columns + 1)).map(
+        function (x: string) {return 'none';});
+    }
+    if (cell.indexOf(':') !== -1) {
+      cells = cell.split(':');
+    }
+    if (!cells.length) {
+      top.arraydef['rowlines'] = lines.join(' ');
+      return;
+    }
+    do {
+      cells[start - 1] = (cells[start - 1] !== 'solid') ? style : cells[start - 1];
+      start++;
+    } while (start <= end);
+    lines[top.table.length - 1] = cells.join(':');
+    top.arraydef['rowlines'] = lines.join(' ');
+  }
+};
 
 /**
  *   LaTeX environments

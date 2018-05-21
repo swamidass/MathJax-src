@@ -589,6 +589,8 @@ new sm.CommandMap('macros', {
   newline:            'Cr',
   hline:             ['HLine', 'solid'],
   hdashline:         ['HLine', 'dashed'],
+  cline:             ['CLine', 'solid'],
+  cdashline:         ['CLine', 'dashed'],
   //      noalign:            'HandleNoAlign',
   eqalignno:         ['Matrix', null, null, 'right left',
                       TexConstant.Length.THICKMATHSPACE, '.5em', 'D', null,

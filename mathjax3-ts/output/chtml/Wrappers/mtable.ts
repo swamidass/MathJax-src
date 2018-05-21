@@ -533,11 +533,18 @@ export class CHTMLmtable<N, T, D> extends CHTMLWrapper<N, T, D> {
         if (!lines) return;
         let i = 0;
         for (const row of this.childNodes.slice(1)) {
-            const line = lines[i++];
+          const cells = lines[i++].split(':');
+          let line: string;
+          if (cells.length === 1) {
+            line = cells[0];
             if (line === 'none') continue;
-            for (const cell of this.adaptor.childNodes(row.chtml) as N[]) {
-                this.adaptor.setStyle(cell, 'borderTop', '.07em ' + line);
-            }
+          }
+          let cellCount = 0;
+          for (const cell of this.adaptor.childNodes(row.chtml) as N[]) {
+            // TODO: Here we change the border top to suit
+            this.adaptor.setStyle(cell, 'borderTop', '.07em ' +
+                                  (line ? line : cells[cellCount++]));
+          }
         }
     }
 
