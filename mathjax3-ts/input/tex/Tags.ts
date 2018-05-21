@@ -51,7 +51,7 @@ export class TagInfo {
    * @constructor
    * @param {string} env The environment name (e.g., align).
    * @param {boolean} taggable Environment supports tags (e.g., align* does, but
-   *     spit does not.)
+   *     split does not.)
    * @param {boolean} defaultTags Environment is tagged by default (e.g., align
    *     is, but align* is not).
    * @param {string} tag The tag name (e.g., 1).
@@ -346,10 +346,19 @@ export class AbstractTags implements Tags {
     }
   }
 
+  /**
+   * @override
+   */
   public finalize(node: MmlNode, env: EnvList): MmlNode {
-    return node;
+    if (!env.display || this.currentTag.env ||
+        this.currentTag.tag == null) {
+      return node;
+    }
+    let tag = this.makeTag();
+    let table = this.enTag(node, tag);
+    return table;
   }
-
+  
   /**
    * @override
    */
@@ -483,5 +492,3 @@ export namespace TagsFactory {
   };
 
 }
-
-// export let DefaultTags = TagsFactory.create('default');
