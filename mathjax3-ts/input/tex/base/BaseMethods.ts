@@ -1011,7 +1011,7 @@ BaseMethods.HLine = function(parser: TexParser, name: string, style: string) {
     while (lines.length < top.table.length) {
       lines.push('none');
     }
-    lines[top.table.length - 1] = style;
+    lines[top.table.length - 1] = (lines[top.table.length - 1] !== 'none') ? 'double' : style;
     top.arraydef['rowlines'] = lines.join(' ');
   }
 };
