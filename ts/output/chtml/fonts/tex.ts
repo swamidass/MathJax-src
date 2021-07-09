@@ -368,4 +368,11 @@ CommonTeXFontMixin<CHTMLCharOptions, CHTMLVariantData, CHTMLDelimiterData, CHTML
     },
   };
 
+  /**
+   * @override
+   */
+  protected getDelimiterData(n: number) {
+    return this.getChar('-smallop', n) || this.getChar('-size4', n);
+  }
+
 }
