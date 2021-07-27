@@ -272,8 +272,9 @@ export function CommonMoMixin<T extends WrapperConstructor>(Base: T): MoConstruc
               }
               this.variant = this.font.getSizeVariant(c, i);
               this.size = i;
-              if (delim.schar && delim.schar[i]) {
-                this.stretch = {...this.stretch, c: delim.schar[i]};
+              const schar = (delim.schar ? delim.schar[Math.min(i, delim.schar.length - 1)] : 0);
+              if (schar) {
+                this.stretch = {...this.stretch, c: schar};
               }
               return;
             }
