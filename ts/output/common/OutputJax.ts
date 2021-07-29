@@ -181,14 +181,17 @@ export abstract class CommonOutputJax<
   constructor(options: OptionList = null,
               defaultFactory: typeof CommonWrapperFactory = null,
               defaultFont: FC = null) {
-    const [jaxOptions, fontOptions] = separateOptions(options, defaultFont.OPTIONS);
+    const [fontClass, font] = (options.font instanceof FontData ?
+                               [options.font.constructor as typeof FontData, options.font] :
+                               [options.font || defaultFont, null]);
+    const [jaxOptions, fontOptions] = separateOptions(options, fontClass.OPTIONS);
     super(jaxOptions);
     this.factory = this.options.wrapperFactory ||
       new defaultFactory<CommonOutputJax<N, T, D, W, F, FD, FC>, W,
     AnyWrapperClass, CharOptions, DelimiterData, FD>();
     this.factory.jax = this;
     this.cssStyles = this.options.cssStyles || new CssStyles();
-    this.font = this.options.font || new defaultFont(fontOptions);
+    this.font = font || new fontClass(fontOptions);
     this.unknownCache = new Map();
   }
 
