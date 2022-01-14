@@ -225,15 +225,12 @@ export class CHTMLFontData extends FontData<CHTMLCharOptions, CHTMLVariantData, 
    * @param {CHTMLDelimiterData} data  The data for the delimiter whose CSS is to be added
    */
   protected addDelimiterStyles(styles: StyleList, n: number, data: CHTMLDelimiterData) {
-    let c = this.charSelector(n);
-    if (data.c && data.c !== n) {
-      c = this.charSelector(data.c);
-    }
     if (!data.stretch) return;
+    const c = (data.c && data.c !== n ? this.charSelector(data.c) : this.charSelector(n));
     if (data.dir === DIRECTION.Vertical) {
-      this.addDelimiterVStyles(styles, c, data);
+      this.addDelimiterVStyles(styles, n, c, data);
     } else {
-      this.addDelimiterHStyles(styles, c, data);
+      this.addDelimiterHStyles(styles, n, c, data);
     }
   }
 
@@ -241,10 +238,11 @@ export class CHTMLFontData extends FontData<CHTMLCharOptions, CHTMLVariantData, 
 
   /**
    * @param {StyleList} styles         The style object to add styles to
+   * @param {number} n                 The delimiter unicode number
    * @param {string} c                 The delimiter character string
    * @param {CHTMLDelimiterData} data  The data for the delimiter whose CSS is to be added
    */
-  protected addDelimiterVStyles(styles: StyleList, c: string, data: CHTMLDelimiterData) {
+  protected addDelimiterVStyles(styles: StyleList, _n: number, c: string, data: CHTMLDelimiterData) {
     const HDW = data.HDW as CHTMLCharData;
     const [beg, ext, end, mid] = data.stretch;
     const Hb = this.addDelimiterVPart(styles, c, 'beg', beg, HDW);
@@ -300,17 +298,19 @@ export class CHTMLFontData extends FontData<CHTMLCharOptions, CHTMLVariantData, 
 
   /**
    * @param {StyleList} styles         The style object to add styles to
+   * @param {number} n                 The delimiter unicode number
    * @param {string} c                 The delimiter character string
    * @param {CHTMLDelimiterData} data  The data for the delimiter whose CSS is to be added
    */
-  protected addDelimiterHStyles(styles: StyleList, c: string, data: CHTMLDelimiterData) {
+  protected addDelimiterHStyles(styles: StyleList, n: number, c: string, data: CHTMLDelimiterData) {
     const [beg, ext, end, mid] = data.stretch;
+    const [begV, extV, endV, midV] = this.getStretchVariants(n);
     const HDW = data.HDW as CHTMLCharData;
-    this.addDelimiterHPart(styles, c, 'beg', beg, HDW);
-    this.addDelimiterHPart(styles, c, 'ext', ext, HDW);
-    this.addDelimiterHPart(styles, c, 'end', end, HDW);
+    this.addDelimiterHPart(styles, c, 'beg', beg, begV, HDW);
+    this.addDelimiterHPart(styles, c, 'ext', ext, extV, HDW);
+    this.addDelimiterHPart(styles, c, 'end', end, endV, HDW);
     if (mid) {
-      this.addDelimiterHPart(styles, c, 'mid', mid, HDW);
+      this.addDelimiterHPart(styles, c, 'mid', mid, midV, HDW);
       styles['mjx-stretchy-h' + c + ' > mjx-ext'] = {width: '50%'};
     }
   }
@@ -320,11 +320,13 @@ export class CHTMLFontData extends FontData<CHTMLCharOptions, CHTMLVariantData, 
    * @param {string} c          The vertical character whose part is being added
    * @param {string} part       The name of the part (beg, ext, end, mid) that is being added
    * @param {number} n          The unicode character to use for the part
+   * @param {string} v          The variant for the character
    * @param {CHTMLCharData} HDW The height-depth-width data for the stretchy character
    */
-  protected addDelimiterHPart(styles: StyleList, c: string, part: string, n: number, HDW: CHTMLCharData) {
+  protected addDelimiterHPart(styles: StyleList, c: string, part: string, n: number, v: string, HDW: CHTMLCharData) {
     if (!n) return;
-    const css: StyleData = {padding: this.padding(HDW as CHTMLCharData, 0, -HDW[2])};
+    const w = this.getChar(v, n)[2];
+    const css: StyleData = {padding: this.padding(HDW as CHTMLCharData, 0, w - HDW[2])};
     styles['mjx-stretchy-h' + c + ' mjx-' + part + ' mjx-c'] = css;
   }
 
