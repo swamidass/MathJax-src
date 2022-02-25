@@ -36,6 +36,7 @@
     "copy:mj2": "npx copyfiles -u 1 'ts/input/asciimath/mathjax2/**/*' js",
     "copy:mml3": "npx copyfiles -u 1 'ts/input/mathml/mml3/mml3.sef.json' js",
     "precompile": "npm run --silent clean:js",
+    "build": "npm run --silent compile",
     "compile": "npx tsc",
     "postcompile": "npm run --silent copy:mj2 && npm run --silent copy:mml3",
     "premake-components": "npm run --silent clean:es5 && npm run --silent clean:lib",
